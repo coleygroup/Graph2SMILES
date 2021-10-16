@@ -1,3 +1,96 @@
 # Graph2SMILES
+A graph-to-sequence model for one-step retrosynthesis and reaction outcome prediction.
 
-Coming soon
+## 1. Environmental setup
+### System requirements
+**Ubuntu**: >= 16.04 <br>
+**conda**: >= 4.0 <br>
+**GPU**: at least 8GB Memory
+
+### Using conda
+Please ensure that conda has been properly initialized, i.e. **conda activate** is runnable. Then
+```
+bash -i setup.sh
+```
+
+## 2. Data preparation
+### Option 1 (recommended)
+Download preprocessed and binarized data from Google Drive by
+```
+python scripts/download_preprocessed_data.py --data_name=USPTO_50k
+python scripts/download_preprocessed_data.py --data_name=USPTO_full
+python scripts/download_preprocessed_data.py --data_name=USPTO_480k
+python scripts/download_preprocessed_data.py --data_name=USPTO_STEREO
+```
+It is okay to only download the datasets you want.
+
+### Option 2
+Download the raw data from Google Drive by
+```
+python scripts/download_raw_data.py --data_name=USPTO_50k
+python scripts/download_raw_data.py --data_name=USPTO_full
+python scripts/download_raw_data.py --data_name=USPTO_480k
+python scripts/download_raw_data.py --data_name=USPTO_STEREO
+```
+It is okay to only download the datasets you want.
+For each dataset, modify the following environmental variables in **scripts/preprocess.sh**:
+
+DATASET: one of [**USPTO_50k**, **USPTO_full**, **USPTO_480k**, **USPTO_STEREO**] <br>
+TASK: **retrosynthesis** for 50k and full, or **reaction_prediction** for 480k and STEREO <br>
+N_WORKERS: number of CPU cores (for parallel preprocessing)
+
+Then run the preprocessing script by
+```
+sh scripts/preprocess.sh
+```
+
+## 3. Model training and validation
+Modify the following environmental variables in **scripts/train_g2s.sh**:
+
+DATASET: one of [**USPTO_50k**, **USPTO_full**, **USPTO_480k**, **USPTO_STEREO**] <br>
+TASK: **retrosynthesis** for 50k and full, or **reaction_prediction** for 480k and STEREO <br>
+MPN_TYPE: one of [**dgcn**, **dgat**]
+
+Then run the training script by
+```
+sh scripts/train_g2s.sh
+```
+
+The training process regularly evaluates on the validation sets, both with and without teacher forcing.
+While this evaluation is done mostly with top-1 accuracy,
+it is also possible to do holistic evaluation *after* training finishes to get all the top-n accuracies on the val sets.
+To do that, first modify the following environmental variables in **scripts/validate.sh**:
+
+EXP_NO: your own identifier (any string) for logging and tracking <br>
+DATASET: one of [**USPTO_50k**, **USPTO_full**, **USPTO_480k**, **USPTO_STEREO**] <br>
+TASK: **retrosynthesis** for 50k and full, or **reaction_prediction** for 480k and STEREO <br>
+CHECKPOINT: the *folder* containing the checkpoints <br>
+FIRST_STEP: the step of the first checkpoints to be evaluated <br>
+LAST_STEP: the step of the last checkpoints to be evaluated
+
+Then run the evaluation script by
+```
+sh scripts/validate.sh
+```
+
+We provide pretrained model checkpoints for all four datasets with both dgcn and dgat,
+which can be downloaded from Google Drive with
+```
+python download_checkpoints.py --data_name=$DATASET --mpn_type=$MPN_TYPE
+```
+using any combinations of DATASET and MPN_TYPE.
+
+## 4. Testing
+Modify the following environmental variables in **scripts/predict.sh**:
+
+EXP_NO: your own identifier (any string) for logging and tracking <br>
+DATASET: one of [**USPTO_50k**, **USPTO_full**, **USPTO_480k**, **USPTO_STEREO**] <br>
+TASK: **retrosynthesis** for 50k and full, or **reaction_prediction** for 480k and STEREO <br>
+CHECKPOINT: the *path* to the checkpoints (which is a .pt file) <br>
+
+Then run the testing script by
+```
+sh scripts/predict.sh
+```
+which will first run beam search to generate the results for all the test inputs,
+and then computes the average top-n accuracies.
