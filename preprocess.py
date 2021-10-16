@@ -286,7 +286,7 @@ if __name__ == "__main__":
     set_seed(args.seed)
 
     # logger setup
-    logger = setup_logger(args.log_file)
+    logger = setup_logger(args)
 
     np.set_printoptions(threshold=sys.maxsize)
     torch.set_printoptions(profile="full")

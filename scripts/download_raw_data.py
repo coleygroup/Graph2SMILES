@@ -49,14 +49,14 @@ def parse_args():
 
 def main():
     args = parse_args()
-    data_path = os.path.join("../data", args.data_name)
+    data_path = os.path.join("./data", args.data_name)
 
     os.makedirs(data_path, exist_ok=True)
 
     for url, fn in urls_fns_dict[args.data_name]:
         ofn = os.path.join(data_path, fn)
         if not os.path.exists(ofn):
-            gdown.download(url, data_path, quiet=False)
+            gdown.download(url, ofn, quiet=False)
             assert os.path.exists(ofn)
         else:
             print(f"{ofn} exists, skip downloading")

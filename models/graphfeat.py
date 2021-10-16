@@ -1,10 +1,7 @@
 import torch
 import torch.nn as nn
 from models.dgat import DGATEncoder
-from models.dgate import DGATEEncoder
-from models.dgates import DGATESEncoder
 from models.dgcn import DGCNEncoder
-from models.ffn import FFNEncoder
 from typing import Tuple
 from utils.data_utils import G2SBatch
 
@@ -27,12 +24,6 @@ class GraphFeatEncoder(nn.Module):
             MPNClass = DGCNEncoder
         elif args.mpn_type == "dgat":
             MPNClass = DGATEncoder
-        elif args.mpn_type == "dgate":
-            MPNClass = DGATEEncoder
-        elif args.mpn_type == "dgates":
-            MPNClass = DGATESEncoder
-        elif args.mpn_type == "ffn":
-            MPNClass = FFNEncoder
         else:
             raise NotImplemented(f"Unsupported mpn_type: {args.mpn_type}!")
 

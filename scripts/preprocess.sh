@@ -11,6 +11,7 @@ PREFIX=${DATASET}_${MODEL}_${REPR_START}_${REPR_END}
 
 python preprocess.py \
   --model="$MODEL" \
+  --data_name="$DATASET" \
   --task="$TASK" \
   --representation_start=$REPR_START \
   --representation_end=$REPR_END \

@@ -7,8 +7,6 @@ import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
-# from models.graph2seq import Graph2Seq
-# from models.graph2seq_series import Graph2SeqSeries
 from models.graph2seq_series_rel import Graph2SeqSeriesRel
 from models.seq2seq import Seq2Seq
 from torch.nn.init import xavier_uniform_
@@ -43,12 +41,6 @@ def main(args):
     if args.model == "s2s":
         model_class = Seq2Seq
         dataset_class = S2SDataset
-    # elif args.model == "g2s":
-    #     model_class = Graph2Seq
-    #     dataset_class = G2SDataset
-    # elif args.model == "g2s_series":
-    #     model_class = Graph2SeqSeries
-    #     dataset_class = G2SDataset
     elif args.model == "g2s_series_rel":
         model_class = Graph2SeqSeriesRel
         dataset_class = G2SDataset
@@ -123,9 +115,6 @@ def main(args):
             if total_step > args.max_steps:
                 logging.info("Max steps reached, finish training")
                 exit(0)
-            # if batch_idx > 20:
-            #     exit(0)
-            # total_step += 1
 
             batch.to(device)
             with torch.autograd.profiler.profile(enabled=args.do_profile,
@@ -267,13 +256,6 @@ def main(args):
                             accs_seq.append(acc_seq)
 
                             if eval_idx % 20 == 0 and i == 0:
-                                # src_length = eval_batch.src_lengths[i].item()
-                                # src_token_ids = eval_batch.src_token_ids[i].cpu().numpy()[:src_length]
-
-                                # logging.info(f"Source token ids: {src_token_ids}")
-                                # logging.info(f"Target token ids: {tgt_token_ids}")
-                                # logging.info(f"Predicted token ids: {prediction}")
-                                # logging.info(f"Source text: {' '.join([vocab_tokens[idx] for idx in src_token_ids])}")
                                 logging.info(f"Target text: {' '.join([vocab_tokens[idx] for idx in tgt_token_ids])}")
                                 logging.info(f"Predicted text: {' '.join([vocab_tokens[idx] for idx in prediction])}")
                                 logging.info(f"acc_token: {acc_token}, acc_seq: {acc_seq}\n")
@@ -309,7 +291,6 @@ def main(args):
 
             model.zero_grad()
             accum = 0
-            # total_step += 1           # for partial batch, do not increase total_step (for now)
 
 
 if __name__ == "__main__":
