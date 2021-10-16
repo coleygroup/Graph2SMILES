@@ -25,7 +25,7 @@ python scripts/download_preprocessed_data.py --data_name=USPTO_STEREO
 It is okay to only download the datasets you want.
 
 ### Option 2
-Download the raw data from Google Drive by
+Download the raw (cleaned and tokenized) data from Google Drive by
 ```
 python scripts/download_raw_data.py --data_name=USPTO_50k
 python scripts/download_raw_data.py --data_name=USPTO_full

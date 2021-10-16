@@ -189,15 +189,6 @@ def binarize_g2s(src_file: str, tgt_file: str, prefix: str, output_path: str,
     a_scopes, a_scopes_lens, b_scopes, b_scopes_lens, a_features, a_features_lens, \
         b_features, b_features_lens, a_graphs, b_graphs = zip(*graph_features_and_lengths)
 
-    # for g in graph_features_and_lengths:
-    #     log_tensor(tensor=g,
-    #                tensor_name="graph_features_and_lengths")
-    #
-    # for tensor_name in ["a_scopes", "a_scopes_lens", "b_scopes", "b_scopes_lens",
-    #                     "a_features", "a_features_lens", "b_features", "b_features_lens", "a_graphs", "b_graphs"]:
-    #     log_tensor(tensor=eval(tensor_name),
-    #                tensor_name=tensor_name)
-
     a_scopes = np.concatenate(a_scopes, axis=0)
     b_scopes = np.concatenate(b_scopes, axis=0)
     a_features = np.concatenate(a_features, axis=0)
@@ -209,12 +200,6 @@ def binarize_g2s(src_file: str, tgt_file: str, prefix: str, output_path: str,
     b_scopes_lens = np.array(b_scopes_lens, dtype=np.int32)
     a_features_lens = np.array(a_features_lens, dtype=np.int32)
     b_features_lens = np.array(b_features_lens, dtype=np.int32)
-
-    # logging.info("I'm the magical division line")
-    # for tensor_name in ["a_scopes", "a_scopes_lens", "b_scopes", "b_scopes_lens",
-    #                     "a_features", "a_features_lens", "b_features", "b_features_lens", "a_graphs", "b_graphs"]:
-    #     log_tensor(tensor=eval(tensor_name),
-    #                tensor_name=tensor_name)
 
     np.savez(
         output_file,
