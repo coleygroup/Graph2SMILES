@@ -4,11 +4,12 @@ MODEL=g2s_series_rel
 
 EXP_NO=1
 DATASET=USPTO_50k
-CHECKPOINT=./checkpoints/USPTO_50k_foo/model_bar.pt
+CHECKPOINT=./checkpoints/pretrained/USPTO_50k_dgcn.pt
 
 BS=30
 T=1.0
 NBEST=30
+MPN_TYPE=dgat
 
 REPR_START=smiles
 REPR_END=smiles
