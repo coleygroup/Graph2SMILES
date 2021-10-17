@@ -19,17 +19,6 @@ conda activate graph2smiles
 ```
 
 ## 2. Data preparation
-### Option 1 (recommended)
-Download preprocessed and binarized data from Google Drive by
-```
-python scripts/download_preprocessed_data.py --data_name=USPTO_50k
-python scripts/download_preprocessed_data.py --data_name=USPTO_full
-python scripts/download_preprocessed_data.py --data_name=USPTO_480k
-python scripts/download_preprocessed_data.py --data_name=USPTO_STEREO
-```
-It is okay to only download the dataset(s) you want.
-
-### Option 2
 Download the raw (cleaned and tokenized) data from Google Drive by
 ```
 python scripts/download_raw_data.py --data_name=USPTO_50k
@@ -52,6 +41,7 @@ sh scripts/preprocess.sh
 ## 3. Model training and validation
 Modify the following environmental variables in **scripts/train_g2s.sh**:
 
+EXP_NO: your own identifier (any string) for logging and tracking <br>
 DATASET: one of [**USPTO_50k**, **USPTO_full**, **USPTO_480k**, **USPTO_STEREO**] <br>
 TASK: **retrosynthesis** for 50k and full, or **reaction_prediction** for 480k and STEREO <br>
 MPN_TYPE: one of [**dgcn**, **dgat**]
@@ -68,7 +58,6 @@ To do that, first modify the following environmental variables in **scripts/vali
 
 EXP_NO: your own identifier (any string) for logging and tracking <br>
 DATASET: one of [**USPTO_50k**, **USPTO_full**, **USPTO_480k**, **USPTO_STEREO**] <br>
-TASK: **retrosynthesis** for 50k and full, or **reaction_prediction** for 480k and STEREO <br>
 CHECKPOINT: the *folder* containing the checkpoints <br>
 FIRST_STEP: the step of the first checkpoints to be evaluated <br>
 LAST_STEP: the step of the last checkpoints to be evaluated
@@ -77,11 +66,13 @@ Then run the evaluation script by
 ```
 sh scripts/validate.sh
 ```
+Note: the evaluation process performs beam search over the whole val sets for all checkpoints.
+It can take tens of hours.
 
 We provide pretrained model checkpoints for all four datasets with both dgcn and dgat,
 which can be downloaded from Google Drive with
 ```
-python download_checkpoints.py --data_name=$DATASET --mpn_type=$MPN_TYPE
+python scripts/download_checkpoints.py --data_name=$DATASET --mpn_type=$MPN_TYPE
 ```
 using any combinations of DATASET and MPN_TYPE.
 
@@ -90,7 +81,6 @@ Modify the following environmental variables in **scripts/predict.sh**:
 
 EXP_NO: your own identifier (any string) for logging and tracking <br>
 DATASET: one of [**USPTO_50k**, **USPTO_full**, **USPTO_480k**, **USPTO_STEREO**] <br>
-TASK: **retrosynthesis** for 50k and full, or **reaction_prediction** for 480k and STEREO <br>
 CHECKPOINT: the *path* to the checkpoint (which is a .pt file) <br>
 
 Then run the testing script by

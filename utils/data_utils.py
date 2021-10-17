@@ -1,4 +1,6 @@
 import logging
+import os.path
+
 import networkx as nx
 import numpy as np
 import re
@@ -790,7 +792,12 @@ def make_vocab(fns: Dict[str, List[Tuple[str, str]]], vocab_file: str, tokenized
 
 
 def load_vocab(vocab_file: str) -> Dict[str, int]:
-    logging.info(f"Loading vocab from {vocab_file}")
+    if os.path.exists(vocab_file):
+        logging.info(f"Loading vocab from {vocab_file}")
+    else:
+        vocab_file = "./preprocessed/default_vocab_smiles.txt"
+        logging.info(f"Vocab file invalid, loading default vocab from {vocab_file}")
+
     vocab = {}
     with open(vocab_file, "r") as f:
         for i, line in enumerate(f):

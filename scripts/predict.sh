@@ -1,17 +1,17 @@
 #!/bin/bash
 
-export MODEL=g2s_series_rel
-export TASK=retrosynthesis
-export BS=30
-export T=1.0
-export NBEST=30
+MODEL=g2s_series_rel
 
-export EXP_NO=1
-export DATASET=schneider50k
-export CHECKPOINT=checkpoints/checkpoint_foo/model_bar.pt
+EXP_NO=1
+DATASET=USPTO_50k
+CHECKPOINT=./checkpoints/USPTO_50k_foo/model_bar.pt
 
-export REPR_START=smiles
-export REPR_END=smiles
+BS=30
+T=1.0
+NBEST=30
+
+REPR_START=smiles
+REPR_END=smiles
 
 PREFIX=${DATASET}_${MODEL}_${REPR_START}_${REPR_END}
 
@@ -19,11 +19,11 @@ python predict.py \
   --do_predict \
   --do_score \
   --model="$MODEL" \
+  --data_name="$DATASET" \
   --test_bin="./preprocessed/$PREFIX/test_0.npz" \
   --test_tgt="./data/$DATASET/tgt-test.txt" \
   --result_file="./results/$PREFIX.$EXP_NO.result.txt" \
   --log_file="$PREFIX.predict.$EXP_NO.log" \
-  --vocab_file="./preprocessed/$PREFIX/vocab_$REPR_END.txt" \
   --load_from="$CHECKPOINT" \
   --mpn_type="$MPN_TYPE" \
   --rel_pos="$REL_POS" \

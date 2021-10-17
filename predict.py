@@ -29,13 +29,7 @@ def main(args):
         logging.info(f"Result file found at {args.result_file}, skipping prediction")
 
     elif args.do_predict and not os.path.exists(args.result_file):
-        os.makedirs(os.path.join("./results", args.data_name), exist_ok=True)
-
-        # initialization ----------------- vocab
-        if not os.path.exists(args.vocab_file):
-            raise ValueError(f"Vocab file {args.vocab_file} not found!")
-        vocab = load_vocab(args.vocab_file)
-        vocab_tokens = [k for k, v in sorted(vocab.items(), key=lambda tup: tup[1])]
+        # os.makedirs(os.path.join("./results", args.data_name), exist_ok=True)
 
         # initialization ----------------- model
         assert os.path.exists(args.load_from), f"{args.load_from} does not exist!"
@@ -55,12 +49,6 @@ def main(args):
         if args.model == "s2s":
             model_class = Seq2Seq
             dataset_class = S2SDataset
-        # elif args.model == "g2s":
-        #     model_class = Graph2Seq
-        #     dataset_class = G2SDataset
-        # elif args.model == "g2s_series":
-        #     model_class = Graph2SeqSeries
-        #     dataset_class = G2SDataset
         elif args.model == "g2s_series_rel":
             model_class = Graph2SeqSeriesRel
             dataset_class = G2SDataset
@@ -68,6 +56,10 @@ def main(args):
             assert args.compute_graph_distance
         else:
             raise ValueError(f"Model {args.model} not supported!")
+
+        # initialization ----------------- vocab
+        vocab = load_vocab(pretrain_args.vocab_file)
+        vocab_tokens = [k for k, v in sorted(vocab.items(), key=lambda tup: tup[1])]
 
         model = model_class(pretrain_args, vocab)
         model.load_state_dict(pretrain_state_dict)
@@ -111,9 +103,6 @@ def main(args):
                     min_length=args.predict_min_len,
                     max_length=args.predict_max_len
                 )
-                # log_tensor(results["predictions"], "predictions")
-                # log_tensor(results["predictions"][0], "predictions_0")
-                # results["predictions"] is List[List[tensor]]]
 
                 for predictions in results["predictions"]:
                     smis = []

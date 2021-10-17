@@ -1,30 +1,31 @@
 #!/bin/bash
 
-export MODEL=g2s_series_rel
-export TASK=retrosynthesis
-export BS=30
-export T=1.0
-export NBEST=30
-export FIRST_STEP=50000
-export LAST_STEP=200000
-export MPN_TYPE=dgat
+MODEL=g2s_series_rel
 
-export EXP_NO=1
-export DATASET=schneider50k
-export CHECKPOINT=checkpoints/checkpoint_foo
+EXP_NO=1
+DATASET=USPTO_50k
+CHECKPOINT=./checkpoints/USPTO_50k_foo_bar/
+FIRST_STEP=50000
+LAST_STEP=200000
 
-export REPR_START=smiles
-export REPR_END=smiles
+BS=30
+T=1.0
+NBEST=30
+MPN_TYPE=dgat
+
+
+REPR_START=smiles
+REPR_END=smiles
 
 PREFIX=${DATASET}_${MODEL}_${REPR_START}_${REPR_END}
 
 python validate.py \
   --model="$MODEL" \
+  --data_name="$DATASET" \
   --valid_bin="./preprocessed/$PREFIX/val_0.npz" \
   --val_tgt="./data/$DATASET/tgt-val.txt" \
   --result_file="./results/$PREFIX.$EXP_NO.result.txt" \
   --log_file="$PREFIX.validate.$EXP_NO.log" \
-  --vocab_file="./preprocessed/$PREFIX/vocab_$REPR_END.txt" \
   --load_from="$CHECKPOINT" \
   --checkpoint_step_start="$FIRST_STEP" \
   --checkpoint_step_end="$LAST_STEP" \
