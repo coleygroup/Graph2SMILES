@@ -1,4 +1,6 @@
 import logging
+import os.path
+
 import networkx as nx
 import numpy as np
 import re
@@ -10,9 +12,7 @@ from rdkit import Chem
 from torch.utils.data import Dataset
 from typing import Dict, List, Tuple
 from utils.chem_utils import ATOM_FDIM, BOND_FDIM, get_atom_features_sparse, get_bond_features
-from utils.ctypes_calculator import DistanceCalculator
 from utils.rxn_graphs import RxnGraph
-from utils.train_utils import log_rank_0
 
 
 def tokenize_selfies_from_smiles(smi: str) -> str:
@@ -41,17 +41,14 @@ def canonicalize_smiles(smiles, remove_atom_number=False, trim=True, suppress_wa
         cano_smiles = ""
 
     else:
-        try:
-            if trim and mol.GetNumHeavyAtoms() < 2:
-                if not suppress_warning:
-                    logging.info(f"Problematic smiles: {smiles}, setting it to 'CC'")
-                cano_smiles = "CC"          # TODO: hardcode to ignore
-            else:
-                if remove_atom_number:
-                    [a.ClearProp('molAtomMapNumber') for a in mol.GetAtoms()]
-                cano_smiles = Chem.MolToSmiles(mol, isomericSmiles=True)
-        except RuntimeError as e:
-            cano_smiles = ""
+        if trim and mol.GetNumHeavyAtoms() < 2:
+            if not suppress_warning:
+                logging.info(f"Problematic smiles: {smiles}, setting it to 'CC'")
+            cano_smiles = "CC"          # TODO: hardcode to ignore
+        else:
+            if remove_atom_number:
+                [a.ClearProp('molAtomMapNumber') for a in mol.GetAtoms()]
+            cano_smiles = Chem.MolToSmiles(mol, isomericSmiles=True)
 
     return cano_smiles
 
@@ -323,7 +320,7 @@ class G2SDataset(Dataset):
         self.vocab = load_vocab(args.vocab_file)
         self.vocab_tokens = [k for k, v in sorted(self.vocab.items(), key=lambda tup: tup[1])]
 
-        log_rank_0(f"Loading preprocessed features from {file}")
+        logging.info(f"Loading preprocessed features from {file}")
         feat = np.load(file)
         for attr in ["a_scopes", "b_scopes", "a_features", "b_features", "a_graphs", "b_graphs",
                      "a_scopes_lens", "b_scopes_lens", "a_features_lens", "b_features_lens",
@@ -331,8 +328,7 @@ class G2SDataset(Dataset):
             setattr(self, attr, feat[attr])
 
         # mask out chiral tag (as UNSPECIFIED)
-        if args.mask_rel_chirality == 1:
-            self.a_features[:, 6] = 2
+        self.a_features[:, 6] = 2
 
         assert len(self.a_scopes_lens) == len(self.b_scopes_lens) == \
                len(self.a_features_lens) == len(self.b_features_lens) == \
@@ -350,38 +346,51 @@ class G2SDataset(Dataset):
         self.data_size = len(self.src_token_ids)
         self.data_indices = np.arange(self.data_size)
 
-        self.distance_calculator = None
-        if self.args.compute_graph_distance:
-            self.distance_calculator = DistanceCalculator()
-
-        log_rank_0(f"Loaded and initialized G2SDataset, size: {self.data_size}")
+        logging.info(f"Loaded and initialized G2SDataset, size: {self.data_size}")
 
     def sort(self):
         if self.args.verbose:
             start = time.time()
-            log_rank_0("Calling G2SDataset.sort()")
+
+            logging.info(f"Calling G2SDataset.sort()")
+            sys.stdout.flush()
             self.data_indices = np.argsort(self.src_lens)
-            log_rank_0(f"Done, time: {time.time() - start: .2f} s")
+
+            logging.info(f"Done, time: {time.time() - start: .2f} s")
+            sys.stdout.flush()
+
         else:
             self.data_indices = np.argsort(self.src_lens)
 
     def shuffle_in_bucket(self, bucket_size: int):
         if self.args.verbose:
             start = time.time()
-            log_rank_0("Calling G2SDataset.shuffle_in_bucket()")
+
+            logging.info(f"Calling G2SDataset.shuffle_in_bucket()")
+            sys.stdout.flush()
+
             for i in range(0, self.data_size, bucket_size):
                 np.random.shuffle(self.data_indices[i:i+bucket_size])
-            log_rank_0(f"Done, time: {time.time() - start: .2f} s")
+
+            logging.info(f"Done, time: {time.time() - start: .2f} s")
+            sys.stdout.flush()
+
         else:
             for i in range(0, self.data_size, bucket_size):
                 np.random.shuffle(self.data_indices[i:i + bucket_size])
 
     def batch(self, batch_type: str, batch_size: int):
         start = time.time()
-        log_rank_0("Calling G2SDataset.batch()")
+
+        logging.info(f"Calling G2SDataset.batch()")
+        sys.stdout.flush()
 
         self.batch_sizes = []
-        if batch_type in ["samples", "atoms"]:
+
+        if batch_type == "samples":
+            raise NotImplementedError
+
+        elif batch_type == "atoms":
             raise NotImplementedError
 
         elif batch_type.startswith("tokens"):
@@ -419,6 +428,29 @@ class G2SDataset(Dataset):
                     while self.args.enable_amp and not max_batch_tgt_len % 8 == 0:  # for amp
                         max_batch_tgt_len += 1
 
+            '''
+            sample_size = 0
+            max_batch_src_len = 0
+
+            for data_idx in self.data_indices:
+                src_len = self.src_lens[data_idx]
+                max_batch_src_len = max(src_len, max_batch_src_len)
+                while self.args.enable_amp and not max_batch_src_len % 8 == 0:          # for amp
+                    max_batch_src_len += 1
+
+                if max_batch_src_len * (sample_size + 1) <= batch_size:
+                    sample_size += 1
+                elif self.args.enable_amp and not sample_size % 8 == 0:
+                    sample_size += 1
+                else:
+                    self.batch_sizes.append(sample_size)
+
+                    sample_size = 1
+                    max_batch_src_len = src_len
+                    while self.args.enable_amp and not max_batch_src_len % 8 == 0:      # for amp
+                        max_batch_src_len += 1
+            '''
+
             # lastly
             self.batch_sizes.append(sample_size)
             self.batch_sizes = np.array(self.batch_sizes)
@@ -431,7 +463,8 @@ class G2SDataset(Dataset):
         else:
             raise ValueError(f"batch_type {batch_type} not supported!")
 
-        log_rank_0(f"Done, time: {time.time() - start: .2f} s, total batches: {self.__len__()}")
+        logging.info(f"Done, time: {time.time() - start: .2f} s, total batches: {self.__len__()}")
+        sys.stdout.flush()
 
     def __getitem__(self, index: int) -> G2SBatch:
         batch_index = index
@@ -477,7 +510,7 @@ class G2SDataset(Dataset):
 
         distances = None
         if self.args.compute_graph_distance:
-            distances = collate_graph_distances(self.args, graph_features, a_lengths, self.distance_calculator)
+            distances = collate_graph_distances(self.args, graph_features, a_lengths)
 
         """
         logging.info("--------------------src_tokens--------------------")
@@ -510,8 +543,6 @@ class G2SDataset(Dataset):
 
 def get_graph_from_smiles(smi: str):
     mol = Chem.MolFromSmiles(smi)
-    if mol is None or mol.GetNumBonds() == 0:
-        mol = Chem.MolFromSmiles("CC")      # hardcode to ignore
     rxn_graph = RxnGraph(reac_mol=mol)
 
     return rxn_graph
@@ -672,8 +703,7 @@ def collate_graph_features(graph_features: List[Tuple], directed: bool = True, u
     return fnode, fmess, agraph, bgraph, atom_scope, bond_scope
 
 
-def collate_graph_distances(args, graph_features: List[Tuple], a_lengths: List[int],
-                            distance_calculator=None) -> torch.Tensor:
+def collate_graph_distances(args, graph_features: List[Tuple], a_lengths: List[int]) -> torch.Tensor:
     max_len = max(a_lengths)
 
     distances = []
@@ -682,23 +712,10 @@ def collate_graph_distances(args, graph_features: List[Tuple], a_lengths: List[i
         bond_features = bond_features.copy()
 
         # compute adjacency
-        adjacency = np.zeros((a_length, a_length), dtype=np.bool_)
+        adjacency = np.zeros((a_length, a_length), dtype=np.int32)
         for bond_feature in bond_features:
             u, v = bond_feature[:2]
-            adjacency[u, v] = True
-
-        distance = distance_calculator.calculate(adjacency, a_length, max_distance=a_length)
-
-        # bucket
-        distance[(distance > 8) & (distance < 15)] = 8
-        distance[distance >= 15] = 9
-        distance[distance == 0] = 10
-
-        # reset diagonal
-        np.fill_diagonal(distance, 0)
-
-        """
-        graph_distance = distance.copy()
+            adjacency[u, v] = 1
 
         # compute graph distance
         distance = adjacency.copy()
@@ -728,20 +745,18 @@ def collate_graph_distances(args, graph_features: List[Tuple], a_lengths: List[i
         # bucket
         distance[(distance > 8) & (distance < 15)] = 8
         distance[distance >= 15] = 9
-        distance[distance == 0] = 10            # different molecules
+        if args.task == "reaction_prediction":
+            distance[distance == 0] = 10
 
         # reset diagonal
         np.fill_diagonal(distance, 0)
-        """
 
         # padding
-        padded_distance = np.ones((max_len, max_len), dtype=np.uint8) * 11
-        # padded_distance[:a_length, :a_length] = graph_distance
+        if args.task == "reaction_prediction":
+            padded_distance = np.ones((max_len, max_len), dtype=np.int32) * 11
+        else:
+            padded_distance = np.ones((max_len, max_len), dtype=np.int32) * 10
         padded_distance[:a_length, :a_length] = distance
-
-        # assert np.array_equal(padded_distance[:a_length, :a_length], distance), \
-        #     f"padded_distance:\n{padded_distance[:a_length, :a_length]}\n" \
-        #     f"distance:\n{distance}"
 
         distances.append(padded_distance)
 
@@ -777,7 +792,12 @@ def make_vocab(fns: Dict[str, List[Tuple[str, str]]], vocab_file: str, tokenized
 
 
 def load_vocab(vocab_file: str) -> Dict[str, int]:
-    log_rank_0(f"Loading vocab from {vocab_file}")
+    if os.path.exists(vocab_file):
+        logging.info(f"Loading vocab from {vocab_file}")
+    else:
+        vocab_file = "./preprocessed/default_vocab_smiles.txt"
+        logging.info(f"Vocab file invalid, loading default vocab from {vocab_file}")
+
     vocab = {}
     with open(vocab_file, "r") as f:
         for i, line in enumerate(f):
